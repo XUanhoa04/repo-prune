@@ -7,6 +7,8 @@ import {
   packageNameFromSpecifier,
 } from '../languages/javascript.js';
 import type { Finding } from '../models/finding.js';
+import { readPythonDependencies } from '../core/python-project.js';
+import { importedPythonModules } from '../languages/python.js';
 
 const EXECUTABLE_ALIASES: Record<string, string[]> = {
   typescript: ['tsc'],
@@ -14,6 +16,17 @@ const EXECUTABLE_ALIASES: Record<string, string[]> = {
   '@typescript-eslint/eslint-plugin': ['eslint'],
   'typescript-eslint': ['eslint'],
   '@vitest/coverage-v8': ['vitest'],
+};
+
+export const PYTHON_PACKAGE_IMPORT_MAP: Readonly<Record<string, readonly string[]>> = {
+  beautifulsoup4: ['bs4'],
+  'google-cloud-storage': ['google.cloud.storage'],
+  'opencv-python': ['cv2'],
+  pillow: ['PIL'],
+  'psycopg2-binary': ['psycopg2'],
+  pyyaml: ['yaml'],
+  'python-dateutil': ['dateutil'],
+  'scikit-learn': ['sklearn'],
 };
 
 function executableNames(dependency: string): string[] {
@@ -86,6 +99,47 @@ export const dependenciesAnalyzer: Analyzer = {
           metadata: { dependency, declaredIn: manifest.file.relativePath, references: 0 },
         });
       }
+    }
+
+    const pythonImports = importedPythonModules(context.sourceFiles);
+    for (const declaration of readPythonDependencies(context.sourceFiles)) {
+      if (context.config.ignore.dependencies.includes(declaration.name)) continue;
+      const expectedImports = PYTHON_PACKAGE_IMPORT_MAP[declaration.name] ?? [
+        declaration.name.replaceAll('-', '_'),
+      ];
+      const isImported = expectedImports.some((expected) =>
+        [...pythonImports].some(
+          (imported) => imported === expected || imported.startsWith(`${expected}.`),
+        ),
+      );
+      if (isImported) continue;
+      findings.push({
+        id: `dependencies:${declaration.path}:${declaration.name}`,
+        category: 'dependencies',
+        title: 'Potentially unused Python dependency',
+        path: declaration.path,
+        confidence: 'medium',
+        evidence: [
+          {
+            type: 'declaration',
+            message: `${declaration.name} is declared in ${declaration.path}`,
+          },
+          {
+            type: 'imports',
+            message: `zero supported imports detected (${expectedImports.join(', ')})`,
+          },
+          { type: 'mapping', message: 'distribution-to-import name mapping was considered' },
+        ],
+        whyThisMayBeWrong:
+          'Python packages can expose command-line tools, plugins, or import names not covered by the mapping.',
+        recommendation: `Verify runtime, CLI, and plugin usage of ${declaration.name} before uninstalling it.`,
+        metadata: {
+          dependency: declaration.name,
+          declaredIn: declaration.path,
+          expectedImports,
+          references: 0,
+        },
+      });
     }
     return findings;
   },

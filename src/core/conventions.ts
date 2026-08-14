@@ -2,6 +2,8 @@ import path from 'node:path';
 import { minimatch } from 'minimatch';
 import type { RepositoryContext, SourceFile } from './repository.js';
 import { collectStringValues, readPackageManifests } from './package-json.js';
+import { readPythonScriptModules } from './python-project.js';
+import { buildPythonModuleIndex } from '../languages/python.js';
 
 const COMMON_ENTRYPOINT_BASENAMES = new Set([
   'index.js',
@@ -30,7 +32,18 @@ const CONVENTION_PATTERNS = [
   'test/**',
   '**/fixtures/**',
   '**/generated/**',
+  '**/migrations/**',
+  '**/test_*.py',
 ];
+
+const PYTHON_CONVENTION_BASENAMES = new Set([
+  '__init__.py',
+  '__main__.py',
+  'main.py',
+  'manage.py',
+  'app.py',
+  'conftest.py',
+]);
 
 function normalizeManifestTarget(manifestPath: string, target: string): string {
   const cleanTarget = target.replace(/^\.\//, '').split('#')[0] ?? target;
@@ -55,11 +68,17 @@ export function detectEntrypoints(context: RepositoryContext): Set<string> {
       }
     }
   }
+  const pythonModules = buildPythonModuleIndex(context.sourceFiles);
+  for (const module of readPythonScriptModules(context.sourceFiles)) {
+    const target = pythonModules.get(module) ?? pythonModules.get(`src.${module}`);
+    if (target) entrypoints.add(target);
+  }
   return entrypoints;
 }
 
 export function isConventionFile(file: SourceFile): boolean {
   if (COMMON_ENTRYPOINT_BASENAMES.has(path.posix.basename(file.relativePath))) return true;
+  if (PYTHON_CONVENTION_BASENAMES.has(path.posix.basename(file.relativePath))) return true;
   return CONVENTION_PATTERNS.some((pattern) =>
     minimatch(file.relativePath, pattern, { dot: true }),
   );

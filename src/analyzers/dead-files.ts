@@ -11,6 +11,11 @@ import {
   resolveJavaScriptImport,
 } from '../languages/javascript.js';
 import type { Finding } from '../models/finding.js';
+import {
+  buildPythonModuleIndex,
+  extractPythonReferences,
+  resolvePythonImport,
+} from '../languages/python.js';
 
 const REFERENCE_EXTENSIONS = new Set(['.json', '.yaml', '.yml', '.toml', '.md', '.mdx']);
 
@@ -27,18 +32,33 @@ function hasTextReference(candidate: SourceFile, context: RepositoryContext): bo
 export const deadFilesAnalyzer: Analyzer = {
   name: 'files',
   async analyze(context): Promise<Finding[]> {
-    const candidates = context.sourceFiles.filter(isJavaScriptFile);
+    const candidates = context.sourceFiles.filter(
+      (file) => isJavaScriptFile(file) || file.extension === '.py',
+    );
+    const javascriptFiles = candidates.filter(isJavaScriptFile);
+    const pythonFiles = candidates.filter((file) => file.extension === '.py');
     const knownPaths = new Set(context.sourceFiles.map((file) => file.relativePath));
     const incoming = new Map(candidates.map((file) => [file.relativePath, 0]));
-    let repositoryHasNonLiteralImports = false;
+    let javascriptHasNonLiteralImports = false;
+    let pythonHasDynamicImports = false;
 
-    for (const file of candidates) {
+    for (const file of javascriptFiles) {
       const references = extractJavaScriptReferences(file);
-      repositoryHasNonLiteralImports ||= references.hasNonLiteralDynamicImport;
+      javascriptHasNonLiteralImports ||= references.hasNonLiteralDynamicImport;
       for (const specifier of references.specifiers) {
         const resolved = resolveJavaScriptImport(file, specifier, knownPaths);
         if (resolved && incoming.has(resolved))
           incoming.set(resolved, (incoming.get(resolved) ?? 0) + 1);
+      }
+    }
+    const pythonModuleIndex = buildPythonModuleIndex(pythonFiles);
+    for (const file of pythonFiles) {
+      const references = extractPythonReferences(file);
+      pythonHasDynamicImports ||= references.hasDynamicImports;
+      for (const reference of references.imports) {
+        for (const resolved of resolvePythonImport(file, reference, pythonModuleIndex)) {
+          if (incoming.has(resolved)) incoming.set(resolved, (incoming.get(resolved) ?? 0) + 1);
+        }
       }
     }
 
@@ -50,7 +70,9 @@ export const deadFilesAnalyzer: Analyzer = {
       if (matchesDynamicImportPath(file, context.config.dynamic_import_paths)) continue;
       if (hasTextReference(file, context)) continue;
 
-      const confidence = repositoryHasNonLiteralImports ? 'medium' : 'high';
+      const hasDynamicImports =
+        file.extension === '.py' ? pythonHasDynamicImports : javascriptHasNonLiteralImports;
+      const confidence = hasDynamicImports ? 'medium' : 'high';
       findings.push({
         id: `files:${file.relativePath}`,
         category: 'files',
