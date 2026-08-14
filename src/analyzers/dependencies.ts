@@ -3,7 +3,7 @@ import type { Analyzer } from '../core/repository.js';
 import { dependencyDeclarationKey } from '../core/reference-index.js';
 import { expectedPythonImports } from '../languages/python-packages.js';
 export { PYTHON_PACKAGE_IMPORT_MAP } from '../languages/python-packages.js';
-import type { Finding } from '../models/finding.js';
+import type { Evidence, Finding } from '../models/finding.js';
 import { assessConfidence } from '../core/confidence.js';
 
 const EXECUTABLE_ALIASES: Record<string, string[]> = {
@@ -102,7 +102,7 @@ export const dependenciesAnalyzer: Analyzer = {
             },
           ]
         : [];
-      const uncertain = [
+      const uncertain: Evidence[] = [
         ...context.referenceIndex.signals.dynamicImports.slice(0, 1).map((signal) => ({
           type: 'dynamic-import',
           message: `repository uses ${signal.detail}`,
@@ -116,6 +116,12 @@ export const dependenciesAnalyzer: Analyzer = {
           line: signal.line,
         })),
       ];
+      if (uncertain.length > 0) {
+        uncertain.push({
+          type: 'runtime-resolution',
+          message: 'the detected runtime loader may resolve package names dynamically',
+        });
+      }
       const assessment = assessConfidence(supporting, contradicting, uncertain);
       findings.push({
         id: `dependencies:${declaration.path}:${declaration.name}`,

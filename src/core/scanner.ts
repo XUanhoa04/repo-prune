@@ -9,6 +9,7 @@ import { isConventionFile, matchesDynamicImportPath } from './conventions.js';
 import { isJavaScriptFile } from '../languages/javascript.js';
 import { buildGitScope } from './git.js';
 import { applyGitScope, correlateFindings } from './correlation.js';
+import { VERSION } from '../version.js';
 
 const LANGUAGE_EXTENSIONS: Record<string, string> = {
   '.js': 'JavaScript',
@@ -75,7 +76,7 @@ export async function scanRepository(
   );
 
   return {
-    version: '0.1.0',
+    version: VERSION,
     root,
     findings,
     summary: {

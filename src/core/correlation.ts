@@ -165,11 +165,16 @@ function historicalCauses(finding: Finding, context: RepositoryContext): Evidenc
       );
     }
   }
-  return [...paths].map((historicalPath) => ({
-    type: 'branch-cause',
-    message: describeHistoricalReference(historicalPath, context),
-    path: historicalPath,
-  }));
+  return [...paths].map((historicalPath) => {
+    const description = describeHistoricalReference(historicalPath, context);
+    const message =
+      finding.category === 'files' && paths.size === 1
+        ? `the only previous importer, ${historicalPath}, ${description
+            .slice(historicalPath.length)
+            .trimStart()}`
+        : description;
+    return { type: 'branch-cause', message, path: historicalPath };
+  });
 }
 
 function directChangeCause(finding: Finding, context: RepositoryContext): Evidence[] {
@@ -214,7 +219,6 @@ export function applyGitScope(
     scoped.push({
       ...finding,
       confidence: assessConfidence(supporting, finding.contradicting, finding.uncertain).level,
-      supporting,
       causedBy: causes,
     });
   }

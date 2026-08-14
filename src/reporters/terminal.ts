@@ -75,6 +75,14 @@ export function renderTerminal(result: ScanResult): string {
     '',
     pc.bold('Repository analyzed'),
     `  ${result.summary.totalFiles.toLocaleString()} files  ${inventory.dependencies} dependencies  ${inventory.scripts} scripts  ${inventory.dockerStages} Docker stages`,
+    ...(inventory.frameworks.length > 0
+      ? [`  Frameworks detected: ${inventory.frameworks.join(', ')}`]
+      : []),
+    ...(result.scope
+      ? [
+          `  Branch scope: ${result.scope.changedFiles} changed ${result.scope.changedFiles === 1 ? 'file' : 'files'} since ${result.scope.since} (${result.scope.mergeBase.slice(0, 8)})`,
+        ]
+      : []),
     `  ${confidenceLabel('high')} ${counts.high}    ${confidenceLabel('medium')} ${counts.medium}    ${confidenceLabel('low')} ${counts.low}`,
   ];
 

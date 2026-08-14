@@ -42,6 +42,7 @@ export interface ScanSummary {
     dependencies: number;
     scripts: number;
     dockerStages: number;
+    frameworks: string[];
   };
   suppressed: {
     safetyConventions: number;

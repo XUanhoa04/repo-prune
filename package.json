@@ -1,6 +1,6 @@
 {
   "name": "repo-prune",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Find what your repository no longer needs.",
   "type": "module",
   "bin": {
@@ -21,6 +21,9 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "demo": "node dist/cli.js scan examples/demo-repo",
+    "demo:since": "node scripts/demo-since.mjs",
+    "prune:self": "node dist/cli.js scan . --category files --confidence high",
+    "benchmark": "node scripts/benchmark.mjs",
     "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "engines": {

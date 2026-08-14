@@ -23,6 +23,6 @@ describe('demo repository integration', () => {
         expect.objectContaining({ title: 'Suspicious duplicate files' }),
       ]),
     );
-    expect(JSON.parse(renderJson(result))).toMatchObject({ version: '0.1.0' });
+    expect(JSON.parse(renderJson(result))).toMatchObject({ version: '0.2.0' });
   });
 });

@@ -8,6 +8,7 @@ import { scanRepository } from './core/scanner.js';
 import { FINDING_CATEGORIES, type Confidence, type FindingCategory } from './models/finding.js';
 import { renderJson } from './reporters/json.js';
 import { renderTerminal } from './reporters/terminal.js';
+import { VERSION } from './version.js';
 
 type OutputFormat = 'text' | 'json';
 
@@ -42,6 +43,10 @@ async function runScan(target: string, options: CliScanOptions): Promise<void> {
     result.findings = result.findings.filter(
       (finding) => finding.confidence === options.confidence,
     );
+    result.summary.estimatedSavingsBytes = result.findings.reduce(
+      (total, finding) => total + Number(finding.metadata?.sizeBytes ?? 0),
+      0,
+    );
   }
   const format = options.json ? 'json' : options.format;
   process.stdout.write(`${format === 'json' ? renderJson(result) : renderTerminal(result)}\n`);
@@ -62,7 +67,7 @@ program
   .exitOverride()
   .name('repo-prune')
   .description('Find what your repository no longer needs.')
-  .version('0.1.0');
+  .version(VERSION);
 
 const addScanOptions = (command: Command): Command =>
   command

@@ -28,7 +28,7 @@ function uncertaintyForFile(
   const languageSignals = context.referenceIndex.signals.dynamicImports.filter((signal) =>
     file.extension === '.py' ? signal.path.endsWith('.py') : !signal.path.endsWith('.py'),
   );
-  const uncertain = [
+  const uncertain: Evidence[] = [
     ...languageSignals.slice(0, 2).map((signal) => ({
       type: 'dynamic-import',
       message: `repository uses ${signal.detail}`,
@@ -42,6 +42,12 @@ function uncertaintyForFile(
       line: signal.line,
     })),
   ];
+  if (languageSignals.length > 0 || context.referenceIndex.signals.globLoaders.length > 0) {
+    uncertain.push({
+      type: 'runtime-resolution',
+      message: 'the detected runtime loader may resolve paths that static imports cannot reveal',
+    });
+  }
   const contradicting: Evidence[] = [];
   if (
     context.referenceIndex.signals.frameworks.includes('NestJS') &&

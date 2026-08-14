@@ -37,6 +37,7 @@ export interface RepositoryInventory {
   dependencies: number;
   scripts: number;
   dockerStages: number;
+  frameworks: string[];
 }
 
 export interface ReferenceIndex {
@@ -240,6 +241,6 @@ export function buildReferenceIndex(sourceFiles: SourceFile[]): ReferenceIndex {
     javascriptAnalyses,
     pythonAnalyses,
     signals: { dynamicImports, globLoaders, frameworks },
-    inventory: { dependencies: dependencyDeclarations.length, scripts, dockerStages },
+    inventory: { dependencies: dependencyDeclarations.length, scripts, dockerStages, frameworks },
   };
 }
