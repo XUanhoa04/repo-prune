@@ -1,0 +1,13 @@
+{
+  "name": "repo-prune-demo",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "node src/index.ts",
+    "legacy-test": "vitest run legacy"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "moment": "^2.30.1"
+  }
+}

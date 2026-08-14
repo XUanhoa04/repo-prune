@@ -1,0 +1,28 @@
+version: 1
+
+ignore:
+  paths:
+    - migrations/**
+    - fixtures/**
+    - generated/**
+    - vendor/**
+    - dist/**
+    - build/**
+  dependencies:
+    - webpack
+    - typescript
+
+entrypoints:
+  - src/main.py
+  - src/index.ts
+
+dynamic_import_paths:
+  - plugins/**
+  - handlers/**
+
+frameworks:
+  auto_detect: true
+
+thresholds:
+  stale_todo_days: 180
+  max_file_size_bytes: 5242880
