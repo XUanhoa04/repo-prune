@@ -4,8 +4,12 @@
 
 Evidence-first repository cleanup for teams that delete carefully.
 
+[![CI](https://github.com/XUanhoa04/repo-prune/actions/workflows/ci.yml/badge.svg)](https://github.com/XUanhoa04/repo-prune/actions/workflows/ci.yml)
+![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 ```bash
-npx repo-prune scan --since main
+npx --yes --package=github:XUanhoa04/repo-prune repo-prune scan --since main
 ```
 
 repo-prune tells you what a feature-removal branch may have left behind—dead files, newly unused
@@ -118,6 +122,9 @@ release, install directly from GitHub:
 ```bash
 npm install --save-dev github:XUanhoa04/repo-prune
 npx repo-prune scan --since main
+
+# Or run it directly (tested against the current main branch)
+npx --yes --package=github:XUanhoa04/repo-prune repo-prune scan --since main
 ```
 
 After publication, the canonical zero-install command is:

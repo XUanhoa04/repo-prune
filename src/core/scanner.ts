@@ -39,7 +39,7 @@ export async function scanRepository(
   const pathIgnore = await createPathIgnore(root, config.ignore.paths);
   const walked = await walkRepository(root, pathIgnore, config.thresholds.max_file_size_bytes);
   const sourceFiles = await loadSourceFiles(walked.files);
-  const referenceIndex = buildReferenceIndex(sourceFiles);
+  const referenceIndex = buildReferenceIndex(sourceFiles, config);
   const gitScope = options.since
     ? await buildGitScope(root, options.since, sourceFiles, config.thresholds.max_file_size_bytes)
     : undefined;

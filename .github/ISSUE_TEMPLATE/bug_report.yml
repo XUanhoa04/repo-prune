@@ -1,0 +1,49 @@
+name: Bug or false positive
+description: Report incorrect behavior or a finding that should have been suppressed.
+title: 'bug: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        False positives are product bugs. Include enough structure to create a regression fixture without sharing private source.
+  - type: input
+    id: version
+    attributes:
+      label: repo-prune version
+      placeholder: 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Finding category
+      options:
+        - files
+        - dependencies
+        - config
+        - scripts
+        - docker
+        - duplicates
+        - CLI / Git scope
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Finding and evidence
+      description: Paste JSON output when possible and remove sensitive paths or values.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Why should the result differ?
+      description: Describe the entrypoint, runtime loader, framework convention, or other reference.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Link a public repository or provide a minimal file tree and relevant snippets.

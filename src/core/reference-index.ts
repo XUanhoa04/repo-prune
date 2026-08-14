@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type { RepoPruneConfig } from './config.js';
 import { readPackageManifests, type PackageManifest } from './package-json.js';
 import { readPythonDependencies } from './python-project.js';
 import type { SourceFile } from './repository.js';
@@ -93,7 +94,10 @@ export function dependencyDeclarationKey(declaration: DependencyDeclaration): st
   return `${declaration.ecosystem}:${declaration.path}:${declaration.name}`;
 }
 
-export function buildReferenceIndex(sourceFiles: SourceFile[]): ReferenceIndex {
+export function buildReferenceIndex(
+  sourceFiles: SourceFile[],
+  config: RepoPruneConfig,
+): ReferenceIndex {
   const knownPaths = new Set(sourceFiles.map((file) => file.relativePath));
   const incomingImports = new Map<string, Set<string>>(
     sourceFiles.map((file) => [file.relativePath, new Set<string>()]),
@@ -214,9 +218,11 @@ export function buildReferenceIndex(sourceFiles: SourceFile[]): ReferenceIndex {
   }
 
   const declaredNames = new Set(dependencyDeclarations.map((declaration) => declaration.name));
-  const frameworks = Object.entries(FRAMEWORK_PACKAGES)
-    .filter(([dependency]) => declaredNames.has(dependency))
-    .map(([, framework]) => framework);
+  const frameworks = config.frameworks.auto_detect
+    ? Object.entries(FRAMEWORK_PACKAGES)
+        .filter(([dependency]) => declaredNames.has(dependency))
+        .map(([, framework]) => framework)
+    : [];
   const scripts = packageManifests.reduce(
     (count, manifest) => count + Object.keys(manifest.data.scripts ?? {}).length,
     0,

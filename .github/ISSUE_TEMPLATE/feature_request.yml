@@ -1,0 +1,26 @@
+name: Focused feature request
+description: Propose an evidence-first repository cleanup capability.
+title: 'feature: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: cleanup_problem
+    attributes:
+      label: Cleanup problem
+      description: What artifact is left behind, and after which developer workflow?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Deterministic evidence
+      description: Which local signals can support, contradict, or make the finding uncertain?
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: False-positive traps
+      description: Which frameworks, runtime behavior, or conventions could make the finding wrong?
+    validations:
+      required: true
