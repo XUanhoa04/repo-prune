@@ -18,6 +18,11 @@ export interface JavaScriptReferences {
   hasNonLiteralDynamicImport: boolean;
 }
 
+export interface LocatedReference {
+  key: string;
+  line: number;
+}
+
 function scriptKind(extension: string): ts.ScriptKind {
   if (extension === '.tsx') return ts.ScriptKind.TSX;
   if (extension === '.jsx') return ts.ScriptKind.JSX;
@@ -65,6 +70,42 @@ export function extractJavaScriptReferences(file: SourceFile): JavaScriptReferen
   };
   visit(source);
   return { specifiers: [...new Set(specifiers)], hasNonLiteralDynamicImport };
+}
+
+export function extractJavaScriptEnvironmentReferences(file: SourceFile): LocatedReference[] {
+  const source = ts.createSourceFile(
+    file.relativePath,
+    file.content,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind(file.extension),
+  );
+  const references: LocatedReference[] = [];
+
+  const isProcessEnv = (node: ts.Expression): boolean =>
+    ts.isPropertyAccessExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 'process' &&
+    node.name.text === 'env';
+
+  const add = (key: string, node: ts.Node): void => {
+    const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+    if (!references.some((reference) => reference.key === key && reference.line === line)) {
+      references.push({ key, line });
+    }
+  };
+
+  const visit = (node: ts.Node): void => {
+    if (ts.isPropertyAccessExpression(node) && isProcessEnv(node.expression)) {
+      add(node.name.text, node);
+    } else if (ts.isElementAccessExpression(node) && isProcessEnv(node.expression)) {
+      const argument = node.argumentExpression;
+      if (argument && ts.isStringLiteralLike(argument)) add(argument.text, node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return references;
 }
 
 export function packageNameFromSpecifier(specifier: string): string | undefined {
