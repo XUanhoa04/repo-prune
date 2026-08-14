@@ -5,7 +5,6 @@ import { npmScriptsAnalyzer } from './npm-scripts.js';
 import { envAnalyzer } from './env.js';
 import { dockerAnalyzer } from './docker.js';
 import { duplicatesAnalyzer } from './duplicates.js';
-import { todosAnalyzer } from './todos.js';
 
 export const analyzers: Analyzer[] = [
   deadFilesAnalyzer,
@@ -14,5 +13,4 @@ export const analyzers: Analyzer[] = [
   npmScriptsAnalyzer,
   dockerAnalyzer,
   duplicatesAnalyzer,
-  todosAnalyzer,
 ];

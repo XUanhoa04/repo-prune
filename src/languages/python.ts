@@ -12,6 +12,16 @@ export interface PythonReferences {
   hasDynamicImports: boolean;
 }
 
+export interface PythonEnvironmentReference {
+  key: string;
+  line: number;
+}
+
+export interface PythonAnalysis extends PythonReferences {
+  environmentReferences: PythonEnvironmentReference[];
+  dynamicImportLines: number[];
+}
+
 function importedNames(value: string): string[] {
   return value
     .replace(/[()]/g, '')
@@ -25,10 +35,16 @@ function importedNames(value: string): string[] {
     .filter((name): name is string => Boolean(name));
 }
 
-export function extractPythonReferences(file: SourceFile): PythonReferences {
+export function analyzePythonFile(file: SourceFile): PythonAnalysis {
   const imports: PythonImport[] = [];
-  let hasDynamicImports = false;
-  for (const rawLine of file.content.split(/\r?\n/)) {
+  const environmentReferences: PythonEnvironmentReference[] = [];
+  const dynamicImportLines: number[] = [];
+  const environmentPatterns = [
+    /\bos\.getenv\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]/g,
+    /\bos\.environ\s*\[\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]\s*\]/g,
+    /\bos\.environ\.get\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]/g,
+  ];
+  for (const [index, rawLine] of file.content.split(/\r?\n/).entries()) {
     const line = rawLine.replace(/\s+#.*$/, '');
     const importMatch = /^\s*import\s+(.+?)\s*$/.exec(line);
     if (importMatch?.[1]) {
@@ -44,9 +60,30 @@ export function extractPythonReferences(file: SourceFile): PythonReferences {
         names: importedNames(fromMatch[3] ?? ''),
       });
     }
-    if (/\b(?:importlib\.import_module|__import__)\s*\(/.test(line)) hasDynamicImports = true;
+    if (/\b(?:importlib\.import_module|__import__)\s*\(/.test(line)) {
+      dynamicImportLines.push(index + 1);
+    }
+    for (const pattern of environmentPatterns) {
+      for (const match of line.matchAll(pattern)) {
+        if (match[1]) environmentReferences.push({ key: match[1], line: index + 1 });
+      }
+    }
   }
-  return { imports, hasDynamicImports };
+  return {
+    imports,
+    hasDynamicImports: dynamicImportLines.length > 0,
+    environmentReferences,
+    dynamicImportLines,
+  };
+}
+
+export function extractPythonReferences(file: SourceFile): PythonReferences {
+  const analysis = analyzePythonFile(file);
+  return { imports: analysis.imports, hasDynamicImports: analysis.hasDynamicImports };
+}
+
+export function extractPythonEnvironmentReferences(file: SourceFile): PythonEnvironmentReference[] {
+  return analyzePythonFile(file).environmentReferences;
 }
 
 export function pythonModuleName(relativePath: string): string {

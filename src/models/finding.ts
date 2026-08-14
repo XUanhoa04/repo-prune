@@ -5,7 +5,6 @@ export const FINDING_CATEGORIES = [
   'scripts',
   'docker',
   'duplicates',
-  'todos',
 ] as const;
 
 export type FindingCategory = (typeof FINDING_CATEGORIES)[number];
@@ -14,6 +13,8 @@ export type Confidence = 'high' | 'medium' | 'low';
 export interface Evidence {
   type: string;
   message: string;
+  path?: string;
+  line?: number;
 }
 
 export interface Finding {
@@ -23,8 +24,10 @@ export interface Finding {
   path?: string;
   line?: number;
   confidence: Confidence;
-  evidence: Evidence[];
-  whyThisMayBeWrong?: string;
+  supporting: Evidence[];
+  contradicting: Evidence[];
+  uncertain: Evidence[];
+  causedBy?: Evidence[];
   recommendation?: string;
   metadata?: Record<string, unknown>;
 }
@@ -35,6 +38,16 @@ export interface ScanSummary {
   skippedFiles: number;
   estimatedSavingsBytes: number;
   languageBytes: Record<string, number>;
+  inventory: {
+    dependencies: number;
+    scripts: number;
+    dockerStages: number;
+  };
+  suppressed: {
+    safetyConventions: number;
+    dynamicPaths: number;
+    sinceFilter: number;
+  };
   durationMs: number;
 }
 

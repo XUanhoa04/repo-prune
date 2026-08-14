@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { Analyzer } from '../core/repository.js';
 import type { Finding } from '../models/finding.js';
+import { assessConfidence } from '../core/confidence.js';
 
 const SUSPICIOUS_NAME = /(?:[_-](?:old|backup|copy)|[-_]final\d*|\bcopy\b)/i;
 
@@ -25,19 +26,27 @@ export const duplicatesAnalyzer: Analyzer = {
       const first = files[0];
       if (!first) continue;
       files.forEach((file) => exactDuplicatePaths.add(file.relativePath));
+      const supporting = [
+        { type: 'hash', message: `identical SHA-256 content hash (${hash.slice(0, 12)}…)` },
+        { type: 'similarity', message: 'content similarity is 100%' },
+        { type: 'paths', message: files.map((file) => file.relativePath).join(', ') },
+      ];
+      const uncertain = [
+        {
+          type: 'intent',
+          message: 'identical fixtures, templates, or generated files can be intentional',
+        },
+      ];
+      const assessment = assessConfidence(supporting, [], uncertain);
       findings.push({
         id: `duplicates:hash:${hash.slice(0, 12)}`,
         category: 'duplicates',
         title: 'Suspicious duplicate files',
         path: first.relativePath,
-        confidence: 'high',
-        evidence: [
-          { type: 'hash', message: `identical SHA-256 content hash (${hash.slice(0, 12)}…)` },
-          { type: 'similarity', message: 'content similarity is 100%' },
-          { type: 'paths', message: files.map((file) => file.relativePath).join(', ') },
-        ],
-        whyThisMayBeWrong:
-          'Identical files can be intentional fixtures, templates, or generated artifacts.',
+        confidence: assessment.level,
+        supporting,
+        contradicting: [],
+        uncertain,
         recommendation:
           'Review ownership and consumers of every copy; do not remove based on hash alone.',
         metadata: {
@@ -53,16 +62,22 @@ export const duplicatesAnalyzer: Analyzer = {
     for (const file of context.sourceFiles) {
       if (exactDuplicatePaths.has(file.relativePath)) continue;
       if (!SUSPICIOUS_NAME.test(path.posix.basename(file.relativePath, file.extension))) continue;
+      const supporting = [
+        { type: 'filename', message: 'name resembles an old, backup, copy, or final artifact' },
+      ];
+      const uncertain = [
+        { type: 'intent', message: 'the filename may be intentional and does not prove non-use' },
+      ];
+      const assessment = assessConfidence(supporting, [], uncertain);
       findings.push({
         id: `duplicates:name:${file.relativePath}`,
         category: 'duplicates',
         title: 'Suspicious artifact filename',
         path: file.relativePath,
-        confidence: 'low',
-        evidence: [
-          { type: 'filename', message: 'name resembles an old, backup, copy, or final artifact' },
-        ],
-        whyThisMayBeWrong: 'The filename may be intentional and does not prove the file is unused.',
+        confidence: assessment.level,
+        supporting,
+        contradicting: [],
+        uncertain,
         recommendation: 'Review the file history and references.',
         metadata: { action: 'REVIEW' },
       });

@@ -14,7 +14,6 @@ export interface RepoPruneConfig {
     auto_detect: boolean;
   };
   thresholds: {
-    stale_todo_days: number;
     max_file_size_bytes: number;
   };
 }
@@ -31,7 +30,6 @@ export const DEFAULT_CONFIG: RepoPruneConfig = {
     auto_detect: true,
   },
   thresholds: {
-    stale_todo_days: 180,
     max_file_size_bytes: 5 * 1024 * 1024,
   },
 };
@@ -73,12 +71,8 @@ export async function loadConfig(root: string): Promise<RepoPruneConfig> {
   const ignore = (raw.ignore ?? {}) as Record<string, unknown>;
   const frameworks = (raw.frameworks ?? {}) as Record<string, unknown>;
   const thresholds = (raw.thresholds ?? {}) as Record<string, unknown>;
-  const staleDays = thresholds.stale_todo_days ?? DEFAULT_CONFIG.thresholds.stale_todo_days;
   const maxSize = thresholds.max_file_size_bytes ?? DEFAULT_CONFIG.thresholds.max_file_size_bytes;
 
-  if (!Number.isInteger(staleDays) || Number(staleDays) < 0) {
-    throw new ConfigError('thresholds.stale_todo_days must be a non-negative integer');
-  }
   if (!Number.isInteger(maxSize) || Number(maxSize) <= 0) {
     throw new ConfigError('thresholds.max_file_size_bytes must be a positive integer');
   }
@@ -98,7 +92,6 @@ export async function loadConfig(root: string): Promise<RepoPruneConfig> {
           : DEFAULT_CONFIG.frameworks.auto_detect,
     },
     thresholds: {
-      stale_todo_days: Number(staleDays),
       max_file_size_bytes: Number(maxSize),
     },
   };
@@ -115,7 +108,7 @@ export async function writeDefaultConfig(root: string): Promise<string> {
     entrypoints: ['src/main.py', 'src/index.ts'],
     dynamic_import_paths: ['plugins/**', 'handlers/**'],
     frameworks: { auto_detect: true },
-    thresholds: { stale_todo_days: 180, max_file_size_bytes: 5242880 },
+    thresholds: { max_file_size_bytes: 5242880 },
   };
 
   try {

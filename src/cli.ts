@@ -17,7 +17,6 @@ interface CliScanOptions {
   confidence?: Confidence;
   category?: FindingCategory;
   failOn?: Confidence;
-  staleDays?: number;
 }
 
 const confidenceRank: Record<Confidence, number> = { low: 1, medium: 2, high: 3 };
@@ -31,20 +30,11 @@ function choice<T extends string>(choices: readonly T[], label: string) {
   };
 }
 
-function nonNegativeInteger(value: string): number {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new InvalidArgumentError('Value must be a non-negative integer');
-  }
-  return parsed;
-}
-
 async function runScan(target: string, options: CliScanOptions): Promise<void> {
   const root = path.resolve(target);
   await access(root);
   const result = await scanRepository(root, analyzers, {
     ...(options.category ? { categories: [options.category] } : {}),
-    ...(options.staleDays === undefined ? {} : { staleDays: options.staleDays }),
   });
   if (options.confidence) {
     result.findings = result.findings.filter(
@@ -97,7 +87,6 @@ const addScanOptions = (command: Command): Command =>
       'exit 1 when findings at or above this confidence exist',
       choice(['high', 'medium', 'low'] as const, 'fail-on'),
     )
-    .option('--stale-days <days>', 'TODO age threshold', nonNegativeInteger)
     .action(runScan);
 
 addScanOptions(program.command('scan').description('scan a repository'));

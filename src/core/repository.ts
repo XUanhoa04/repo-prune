@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import type { RepoPruneConfig } from './config.js';
 import type { RepositoryFile } from './filesystem.js';
 import type { Finding } from '../models/finding.js';
+import type { ReferenceIndex } from './reference-index.js';
 
 export interface SourceFile extends RepositoryFile {
   content: string;
@@ -12,6 +13,7 @@ export interface RepositoryContext {
   config: RepoPruneConfig;
   files: RepositoryFile[];
   sourceFiles: SourceFile[];
+  referenceIndex: ReferenceIndex;
 }
 
 export interface Analyzer {

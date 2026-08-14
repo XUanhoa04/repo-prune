@@ -5,17 +5,9 @@ import {
   isConventionFile,
   matchesDynamicImportPath,
 } from '../core/conventions.js';
-import {
-  extractJavaScriptReferences,
-  isJavaScriptFile,
-  resolveJavaScriptImport,
-} from '../languages/javascript.js';
-import type { Finding } from '../models/finding.js';
-import {
-  buildPythonModuleIndex,
-  extractPythonReferences,
-  resolvePythonImport,
-} from '../languages/python.js';
+import { isJavaScriptFile } from '../languages/javascript.js';
+import type { Evidence, Finding } from '../models/finding.js';
+import { assessConfidence } from '../core/confidence.js';
 
 const REFERENCE_EXTENSIONS = new Set(['.json', '.yaml', '.yml', '.toml', '.md', '.mdx']);
 
@@ -29,67 +21,82 @@ function hasTextReference(candidate: SourceFile, context: RepositoryContext): bo
   );
 }
 
+function uncertaintyForFile(
+  file: SourceFile,
+  context: RepositoryContext,
+): { uncertain: Evidence[]; contradicting: Evidence[] } {
+  const languageSignals = context.referenceIndex.signals.dynamicImports.filter((signal) =>
+    file.extension === '.py' ? signal.path.endsWith('.py') : !signal.path.endsWith('.py'),
+  );
+  const uncertain = [
+    ...languageSignals.slice(0, 2).map((signal) => ({
+      type: 'dynamic-import',
+      message: `repository uses ${signal.detail}`,
+      path: signal.path,
+      line: signal.line,
+    })),
+    ...context.referenceIndex.signals.globLoaders.slice(0, 2).map((signal) => ({
+      type: 'glob-loader',
+      message: `glob-based module loading detected (${signal.detail})`,
+      path: signal.path,
+      line: signal.line,
+    })),
+  ];
+  const contradicting: Evidence[] = [];
+  if (
+    context.referenceIndex.signals.frameworks.includes('NestJS') &&
+    /@(Controller|Injectable|Module|Resolver|Processor)\b/.test(file.content)
+  ) {
+    contradicting.push({
+      type: 'framework-decorator',
+      message: 'NestJS is detected and this file contains a discovery-related decorator',
+      path: file.relativePath,
+    });
+  }
+  return { uncertain, contradicting };
+}
+
 export const deadFilesAnalyzer: Analyzer = {
   name: 'files',
   async analyze(context): Promise<Finding[]> {
     const candidates = context.sourceFiles.filter(
       (file) => isJavaScriptFile(file) || file.extension === '.py',
     );
-    const javascriptFiles = candidates.filter(isJavaScriptFile);
-    const pythonFiles = candidates.filter((file) => file.extension === '.py');
-    const knownPaths = new Set(context.sourceFiles.map((file) => file.relativePath));
-    const incoming = new Map(candidates.map((file) => [file.relativePath, 0]));
-    let javascriptHasNonLiteralImports = false;
-    let pythonHasDynamicImports = false;
-
-    for (const file of javascriptFiles) {
-      const references = extractJavaScriptReferences(file);
-      javascriptHasNonLiteralImports ||= references.hasNonLiteralDynamicImport;
-      for (const specifier of references.specifiers) {
-        const resolved = resolveJavaScriptImport(file, specifier, knownPaths);
-        if (resolved && incoming.has(resolved))
-          incoming.set(resolved, (incoming.get(resolved) ?? 0) + 1);
-      }
-    }
-    const pythonModuleIndex = buildPythonModuleIndex(pythonFiles);
-    for (const file of pythonFiles) {
-      const references = extractPythonReferences(file);
-      pythonHasDynamicImports ||= references.hasDynamicImports;
-      for (const reference of references.imports) {
-        for (const resolved of resolvePythonImport(file, reference, pythonModuleIndex)) {
-          if (incoming.has(resolved)) incoming.set(resolved, (incoming.get(resolved) ?? 0) + 1);
-        }
-      }
-    }
-
     const entrypoints = detectEntrypoints(context);
     const findings: Finding[] = [];
     for (const file of candidates) {
-      if ((incoming.get(file.relativePath) ?? 0) > 0) continue;
+      if ((context.referenceIndex.incomingImports.get(file.relativePath)?.size ?? 0) > 0) continue;
       if (entrypoints.has(file.relativePath) || isConventionFile(file)) continue;
       if (matchesDynamicImportPath(file, context.config.dynamic_import_paths)) continue;
       if (hasTextReference(file, context)) continue;
 
-      const hasDynamicImports =
-        file.extension === '.py' ? pythonHasDynamicImports : javascriptHasNonLiteralImports;
-      const confidence = hasDynamicImports ? 'medium' : 'high';
+      const supporting = [
+        { type: 'import-graph', message: 'no source file imports it' },
+        { type: 'entrypoint', message: 'not a package or configured entrypoint' },
+        { type: 'tests', message: 'tests and documentation do not reference it' },
+        { type: 'config', message: 'known configuration files do not reference it' },
+        { type: 'framework', message: 'no supported framework convention protects it' },
+      ];
+      const { uncertain, contradicting } = uncertaintyForFile(file, context);
+      const assessment = assessConfidence(supporting, contradicting, uncertain);
+      const firstCaveat = [...contradicting, ...uncertain][0];
       findings.push({
         id: `files:${file.relativePath}`,
         category: 'files',
         title: 'Potential dead file',
         path: file.relativePath,
-        confidence,
-        evidence: [
-          { type: 'import-graph', message: 'no incoming static imports' },
-          { type: 'entrypoint', message: 'not a package or configured entrypoint' },
-          { type: 'tests', message: 'not referenced by tests or documentation' },
-          { type: 'config', message: 'not referenced by known configuration files' },
-          { type: 'framework', message: 'not matched by supported framework conventions' },
-        ],
-        whyThisMayBeWrong:
-          'Runtime dynamic imports, reflection, and framework-specific discovery cannot always be detected.',
-        recommendation: 'Review the file and its runtime loading paths before removing it.',
-        metadata: { sizeBytes: file.size, incomingImports: 0 },
+        confidence: assessment.level,
+        supporting,
+        contradicting,
+        uncertain,
+        recommendation: firstCaveat?.path
+          ? `Review ${firstCaveat.path}${firstCaveat.line ? `:${firstCaveat.line}` : ''}, then run git grep for the filename.`
+          : 'Run git grep for the filename and review runtime loading paths before removing it.',
+        metadata: {
+          sizeBytes: file.size,
+          incomingImports: 0,
+          uncertaintySignals: uncertain.length + contradicting.length,
+        },
       });
     }
     return findings;

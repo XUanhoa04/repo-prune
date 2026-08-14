@@ -4,6 +4,9 @@ import { walkRepository } from './filesystem.js';
 import { loadConfig, type RepoPruneConfig } from './config.js';
 import { loadSourceFiles, type Analyzer } from './repository.js';
 import type { FindingCategory, ScanResult } from '../models/finding.js';
+import { buildReferenceIndex } from './reference-index.js';
+import { isConventionFile, matchesDynamicImportPath } from './conventions.js';
+import { isJavaScriptFile } from '../languages/javascript.js';
 
 const LANGUAGE_EXTENSIONS: Record<string, string> = {
   '.js': 'JavaScript',
@@ -19,7 +22,6 @@ const LANGUAGE_EXTENSIONS: Record<string, string> = {
 
 export interface ScanOptions {
   categories?: FindingCategory[];
-  staleDays?: number;
 }
 
 export async function scanRepository(
@@ -29,18 +31,12 @@ export async function scanRepository(
 ): Promise<ScanResult> {
   const startedAt = performance.now();
   const root = path.resolve(requestedRoot);
-  const loadedConfig = await loadConfig(root);
-  const config: RepoPruneConfig =
-    options.staleDays !== undefined
-      ? {
-          ...loadedConfig,
-          thresholds: { ...loadedConfig.thresholds, stale_todo_days: options.staleDays },
-        }
-      : loadedConfig;
+  const config: RepoPruneConfig = await loadConfig(root);
   const pathIgnore = await createPathIgnore(root, config.ignore.paths);
   const walked = await walkRepository(root, pathIgnore, config.thresholds.max_file_size_bytes);
   const sourceFiles = await loadSourceFiles(walked.files);
-  const context = { root, config, files: walked.files, sourceFiles };
+  const referenceIndex = buildReferenceIndex(sourceFiles);
+  const context = { root, config, files: walked.files, sourceFiles, referenceIndex };
   const selected = options.categories
     ? analyzers.filter((analyzer) => options.categories?.includes(analyzerCategory(analyzer.name)))
     : analyzers;
@@ -55,6 +51,11 @@ export async function scanRepository(
     const language = LANGUAGE_EXTENSIONS[file.extension] ?? 'Other';
     languageBytes[language] = (languageBytes[language] ?? 0) + file.size;
   }
+  const unreferencedSources = sourceFiles.filter(
+    (file) =>
+      (isJavaScriptFile(file) || file.extension === '.py') &&
+      (referenceIndex.incomingImports.get(file.relativePath)?.size ?? 0) === 0,
+  );
 
   return {
     version: '0.1.0',
@@ -69,6 +70,14 @@ export async function scanRepository(
         0,
       ),
       languageBytes,
+      inventory: referenceIndex.inventory,
+      suppressed: {
+        safetyConventions: unreferencedSources.filter(isConventionFile).length,
+        dynamicPaths: unreferencedSources.filter((file) =>
+          matchesDynamicImportPath(file, config.dynamic_import_paths),
+        ).length,
+        sinceFilter: 0,
+      },
       durationMs: Math.round(performance.now() - startedAt),
     },
   };

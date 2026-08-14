@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { Analyzer, SourceFile } from '../core/repository.js';
 import type { Finding } from '../models/finding.js';
+import { assessConfidence } from '../core/confidence.js';
 
 interface DockerStage {
   name: string;
@@ -35,21 +36,29 @@ export const dockerAnalyzer: Analyzer = {
         const targetPattern = new RegExp(`--target(?:=|\\s+)${stage.name}\\b`);
         if (context.sourceFiles.some((candidate) => targetPattern.test(candidate.content)))
           continue;
+        const supporting = [
+          { type: 'stage', message: `${stage.name} is a named build stage` },
+          { type: 'from', message: 'no later FROM instruction references this stage' },
+          { type: 'copy', message: 'no COPY --from instruction references this stage' },
+          { type: 'target', message: 'no repository command selects it as a build target' },
+        ];
+        const uncertain = [
+          {
+            type: 'external-build',
+            message: 'build commands outside the repository may select this stage with --target',
+          },
+        ];
+        const assessment = assessConfidence(supporting, [], uncertain);
         findings.push({
           id: `docker:${file.relativePath}:${stage.name}`,
           category: 'docker',
           title: 'Potential unused Docker stage',
           path: file.relativePath,
           line: stage.line,
-          confidence: 'high',
-          evidence: [
-            { type: 'stage', message: `${stage.name} is a named build stage` },
-            { type: 'from', message: 'no later FROM instruction references this stage' },
-            { type: 'copy', message: 'no COPY --from instruction references this stage' },
-            { type: 'target', message: 'no repository command uses it as a build target' },
-          ],
-          whyThisMayBeWrong:
-            'External build commands can select a stage with docker build --target.',
+          confidence: assessment.level,
+          supporting,
+          contradicting: [],
+          uncertain,
           recommendation: `Check deployment automation for --target ${stage.name} before removing this stage.`,
           metadata: { stage: stage.name },
         });

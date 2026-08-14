@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { minimatch } from 'minimatch';
 import type { RepositoryContext, SourceFile } from './repository.js';
-import { collectStringValues, readPackageManifests } from './package-json.js';
+import { collectStringValues } from './package-json.js';
 import { readPythonScriptModules } from './python-project.js';
 import { buildPythonModuleIndex } from '../languages/python.js';
 
@@ -55,7 +55,7 @@ export function detectEntrypoints(context: RepositoryContext): Set<string> {
     context.config.entrypoints.map((value) => value.replaceAll('\\', '/')),
   );
   const knownPaths = new Set(context.sourceFiles.map((file) => file.relativePath));
-  for (const manifest of readPackageManifests(context.sourceFiles)) {
+  for (const manifest of context.referenceIndex.packageManifests) {
     const targets = [
       ...(manifest.data.main ? [manifest.data.main] : []),
       ...(manifest.data.module ? [manifest.data.module] : []),
