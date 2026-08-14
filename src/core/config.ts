@@ -54,7 +54,11 @@ export async function loadConfig(root: string): Promise<RepoPruneConfig> {
   let raw: Record<string, unknown> | undefined;
   for (const filename of CONFIG_FILENAMES) {
     try {
-      raw = parse(await readFile(path.join(root, filename), 'utf8')) as Record<string, unknown>;
+      const parsed = parse(await readFile(path.join(root, filename), 'utf8')) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new ConfigError(`${filename} must contain a YAML object`);
+      }
+      raw = parsed as Record<string, unknown>;
       break;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {

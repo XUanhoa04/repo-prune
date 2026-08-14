@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -17,5 +17,11 @@ describe('configuration', () => {
     const destination = await writeDefaultConfig(root);
     expect(await readFile(destination, 'utf8')).toContain('dynamic_import_paths');
     await expect(loadConfig(root)).resolves.toMatchObject({ version: 1 });
+  });
+
+  it('rejects an empty configuration document', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'repo-prune-'));
+    await writeFile(path.join(root, '.repo-prune.yml'), '', 'utf8');
+    await expect(loadConfig(root)).rejects.toThrow('must contain a YAML object');
   });
 });

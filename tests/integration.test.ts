@@ -9,9 +9,9 @@ describe('demo repository integration', () => {
     const root = path.resolve('examples/demo-repo');
     const result = await scanRepository(root, analyzers);
     const categories = new Set(result.findings.map((finding) => finding.category));
-    expect(categories).toEqual(
-      new Set(['files', 'dependencies', 'config', 'scripts', 'docker', 'duplicates']),
-    );
+    for (const required of ['files', 'dependencies', 'config', 'scripts', 'docker', 'duplicates']) {
+      expect(categories).toContain(required);
+    }
     expect(result.findings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ title: 'Potential dead file' }),

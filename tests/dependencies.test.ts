@@ -12,4 +12,13 @@ describe('dependency analyzer', () => {
     const result = await scanRepository(root, [dependenciesAnalyzer]);
     expect(result.findings.map((finding) => finding.metadata?.dependency)).toEqual(['moment']);
   });
+
+  it('does not treat implicit TypeScript declaration packages as unused', async () => {
+    const root = await createFixture({
+      'package.json': JSON.stringify({ devDependencies: { '@types/node': '20.0.0' } }),
+      'index.ts': 'process.stdout.write("ok");\n',
+    });
+    const result = await scanRepository(root, [dependenciesAnalyzer]);
+    expect(result.findings).toHaveLength(0);
+  });
 });

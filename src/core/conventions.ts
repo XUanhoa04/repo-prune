@@ -54,6 +54,7 @@ export function detectEntrypoints(context: RepositoryContext): Set<string> {
   const entrypoints = new Set(
     context.config.entrypoints.map((value) => value.replaceAll('\\', '/')),
   );
+  const knownPaths = new Set(context.sourceFiles.map((file) => file.relativePath));
   for (const manifest of readPackageManifests(context.sourceFiles)) {
     const targets = [
       ...(manifest.data.main ? [manifest.data.main] : []),
@@ -65,6 +66,13 @@ export function detectEntrypoints(context: RepositoryContext): Set<string> {
     for (const target of targets) {
       if (target.startsWith('.')) {
         entrypoints.add(normalizeManifestTarget(manifest.file.relativePath, target));
+      }
+    }
+    for (const command of Object.values(manifest.data.scripts ?? {})) {
+      for (const match of command.matchAll(/(?:^|\s)(?:\.\/)?([\w./-]+\.(?:[cm]?[jt]sx?))\b/g)) {
+        if (!match[1]) continue;
+        const target = normalizeManifestTarget(manifest.file.relativePath, match[1]);
+        if (knownPaths.has(target)) entrypoints.add(target);
       }
     }
   }

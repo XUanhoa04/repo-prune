@@ -29,4 +29,13 @@ describe('dead file analyzer', () => {
     const result = await scanRepository(root, [deadFilesAnalyzer]);
     expect(result.findings).toHaveLength(0);
   });
+
+  it('treats files invoked by package scripts as entrypoints', async () => {
+    const root = await createFixture({
+      'package.json': JSON.stringify({ scripts: { worker: 'node src/worker.ts' } }),
+      'src/worker.ts': 'export const run = true;\n',
+    });
+    const result = await scanRepository(root, [deadFilesAnalyzer]);
+    expect(result.findings).toHaveLength(0);
+  });
 });

@@ -30,12 +30,13 @@ export async function scanRepository(
   const startedAt = performance.now();
   const root = path.resolve(requestedRoot);
   const loadedConfig = await loadConfig(root);
-  const config: RepoPruneConfig = options.staleDays
-    ? {
-        ...loadedConfig,
-        thresholds: { ...loadedConfig.thresholds, stale_todo_days: options.staleDays },
-      }
-    : loadedConfig;
+  const config: RepoPruneConfig =
+    options.staleDays !== undefined
+      ? {
+          ...loadedConfig,
+          thresholds: { ...loadedConfig.thresholds, stale_todo_days: options.staleDays },
+        }
+      : loadedConfig;
   const pathIgnore = await createPathIgnore(root, config.ignore.paths);
   const walked = await walkRepository(root, pathIgnore, config.thresholds.max_file_size_bytes);
   const sourceFiles = await loadSourceFiles(walked.files);

@@ -2,5 +2,6 @@ node_modules/
 dist/
 coverage/
 .repo-prune.yml
+!examples/demo-repo/.repo-prune.yml
 *.log
 .DS_Store

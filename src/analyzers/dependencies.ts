@@ -74,6 +74,8 @@ export const dependenciesAnalyzer: Analyzer = {
 
       for (const dependency of Object.keys(declared).sort()) {
         if (context.config.ignore.dependencies.includes(dependency)) continue;
+        // Declaration packages are consumed implicitly by TypeScript and often have no import.
+        if (dependency.startsWith('@types/')) continue;
         if (importedPackages.has(dependency)) continue;
         if (scripts.some((script) => commandReferencesDependency(script, dependency))) continue;
         if (relevantConfig.some((file) => file.content.includes(dependency))) continue;

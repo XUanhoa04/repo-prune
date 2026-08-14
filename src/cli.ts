@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { Command, InvalidArgumentError } from 'commander';
+import { Command, CommanderError, InvalidArgumentError } from 'commander';
 import { access } from 'node:fs/promises';
 import path from 'node:path';
 import { analyzers } from './analyzers/index.js';
-import { ConfigError, writeDefaultConfig } from './core/config.js';
+import { writeDefaultConfig } from './core/config.js';
 import { scanRepository } from './core/scanner.js';
 import { FINDING_CATEGORIES, type Confidence, type FindingCategory } from './models/finding.js';
 import { renderJson } from './reporters/json.js';
@@ -67,6 +67,7 @@ async function runScan(target: string, options: CliScanOptions): Promise<void> {
 
 const program = new Command();
 program
+  .exitOverride()
   .name('repo-prune')
   .description('Find what your repository no longer needs.')
   .version('0.1.0');
@@ -114,7 +115,13 @@ if (process.argv.length === 2) process.argv.push('scan');
 try {
   await program.parseAsync();
 } catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`repo-prune: ${message}\n`);
-  process.exitCode = error instanceof ConfigError ? 2 : 2;
+  if (error instanceof CommanderError) {
+    process.exitCode = ['commander.helpDisplayed', 'commander.version'].includes(error.code)
+      ? 0
+      : 2;
+  } else {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`repo-prune: ${message}\n`);
+    process.exitCode = 2;
+  }
 }

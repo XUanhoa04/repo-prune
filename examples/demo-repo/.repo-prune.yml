@@ -1,0 +1,7 @@
+version: 1
+
+entrypoints:
+  - src/index.ts
+
+thresholds:
+  stale_todo_days: 0
