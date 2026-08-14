@@ -3,6 +3,7 @@ import type { RepoPruneConfig } from './config.js';
 import type { RepositoryFile } from './filesystem.js';
 import type { Finding } from '../models/finding.js';
 import type { ReferenceIndex } from './reference-index.js';
+import type { GitScope } from './git.js';
 
 export interface SourceFile extends RepositoryFile {
   content: string;
@@ -14,6 +15,7 @@ export interface RepositoryContext {
   files: RepositoryFile[];
   sourceFiles: SourceFile[];
   referenceIndex: ReferenceIndex;
+  gitScope?: GitScope;
 }
 
 export interface Analyzer {

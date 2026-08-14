@@ -56,4 +56,9 @@ export interface ScanResult {
   root: string;
   findings: Finding[];
   summary: ScanSummary;
+  scope?: {
+    since: string;
+    mergeBase: string;
+    changedFiles: number;
+  };
 }

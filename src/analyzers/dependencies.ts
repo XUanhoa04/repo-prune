@@ -64,11 +64,11 @@ export const dependenciesAnalyzer: Analyzer = {
           if (manifestDirectory !== '.' && !file.relativePath.startsWith(`${manifestDirectory}/`)) {
             return false;
           }
-          return (
-            ['.json', '.yaml', '.yml', '.toml', '.js', '.cjs', '.mjs', '.ts'].includes(
-              file.extension,
-            ) && file.content.includes(declaration.name)
-          );
+          const isDataConfig = ['.json', '.yaml', '.yml', '.toml'].includes(file.extension);
+          const isCodeConfig =
+            ['.js', '.cjs', '.mjs', '.ts'].includes(file.extension) &&
+            /(?:^|\/)(?:[^/]+\.)?config\.[^.]+$/.test(file.relativePath);
+          return (isDataConfig || isCodeConfig) && file.content.includes(declaration.name);
         });
         if (referencedByConfig) continue;
       }

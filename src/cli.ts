@@ -17,6 +17,7 @@ interface CliScanOptions {
   confidence?: Confidence;
   category?: FindingCategory;
   failOn?: Confidence;
+  since?: string;
 }
 
 const confidenceRank: Record<Confidence, number> = { low: 1, medium: 2, high: 3 };
@@ -35,6 +36,7 @@ async function runScan(target: string, options: CliScanOptions): Promise<void> {
   await access(root);
   const result = await scanRepository(root, analyzers, {
     ...(options.category ? { categories: [options.category] } : {}),
+    ...(options.since ? { since: options.since } : {}),
   });
   if (options.confidence) {
     result.findings = result.findings.filter(
@@ -87,6 +89,7 @@ const addScanOptions = (command: Command): Command =>
       'exit 1 when findings at or above this confidence exist',
       choice(['high', 'medium', 'low'] as const, 'fail-on'),
     )
+    .option('--since <git-ref>', 'show findings caused by changes since a Git ref')
     .action(runScan);
 
 addScanOptions(program.command('scan').description('scan a repository'));
