@@ -1,0 +1,62 @@
+{
+  "name": "repo-prune",
+  "version": "0.1.0",
+  "description": "Find what your repository no longer needs.",
+  "type": "module",
+  "bin": {
+    "repo-prune": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    ".repo-prune.example.yml"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "demo": "node dist/cli.js scan examples/demo-repo",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "dead-code",
+    "repository",
+    "static-analysis",
+    "unused-dependencies",
+    "cli"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XUanhoa04/repo-prune.git"
+  },
+  "bugs": {
+    "url": "https://github.com/XUanhoa04/repo-prune/issues"
+  },
+  "homepage": "https://github.com/XUanhoa04/repo-prune#readme",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "ignore": "^7.0.6",
+    "minimatch": "^10.2.6",
+    "picocolors": "^1.1.1",
+    "smol-toml": "^1.8.0",
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.17",
+    "eslint": "^10.8.1",
+    "prettier": "^3.9.0",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10"
+  }
+}
