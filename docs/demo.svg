@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="720" viewBox="0 0 1120 720" role="img" aria-labelledby="title description">
+  <title id="title">repo-prune branch-aware terminal output</title>
+  <desc id="description">Terminal screenshot showing a dead payment handler connected to its previous importer by branch evidence.</desc>
+  <rect width="1120" height="720" rx="18" fill="#0d1117"/>
+  <rect width="1120" height="48" rx="18" fill="#161b22"/>
+  <rect y="30" width="1120" height="18" fill="#161b22"/>
+  <circle cx="25" cy="24" r="7" fill="#ff5f56"/>
+  <circle cx="49" cy="24" r="7" fill="#ffbd2e"/>
+  <circle cx="73" cy="24" r="7" fill="#27c93f"/>
+  <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="18">
+    <text x="30" y="83" fill="#8b949e">$ repo-prune scan --since main</text>
+    <text x="30" y="122" fill="#f0f6fc" font-weight="700">repo-prune v0.2.0</text>
+    <text x="30" y="157" fill="#f0f6fc" font-weight="700">Repository analyzed</text>
+    <text x="52" y="188" fill="#c9d1d9">5 files   2 dependencies   0 scripts   0 Docker stages</text>
+    <text x="52" y="218" fill="#c9d1d9">Branch scope: 1 changed file since main</text>
+    <text x="30" y="263" fill="#ff7b72" font-weight="700">HIGH</text>
+    <text x="112" y="263" fill="#79c0ff" font-weight="700">src/payment/legacy-handler.ts</text>
+    <text x="30" y="303" fill="#f0f6fc" font-weight="700">Looks removable because</text>
+    <text x="52" y="334" fill="#3fb950">✓</text>
+    <text x="81" y="334" fill="#c9d1d9">no source file imports it</text>
+    <text x="52" y="365" fill="#3fb950">✓</text>
+    <text x="81" y="365" fill="#c9d1d9">not a package or configured entrypoint</text>
+    <text x="52" y="396" fill="#3fb950">✓</text>
+    <text x="81" y="396" fill="#c9d1d9">tests and documentation do not reference it</text>
+    <text x="30" y="444" fill="#f0f6fc" font-weight="700">Branch evidence</text>
+    <text x="52" y="477" fill="#d2a8ff">↳</text>
+    <text x="81" y="477" fill="#c9d1d9">the only previous importer, src/payment/router.ts,</text>
+    <text x="81" y="508" fill="#c9d1d9">stopped providing this reference in this branch</text>
+    <text x="30" y="556" fill="#f0f6fc" font-weight="700">Suggested review</text>
+    <text x="52" y="589" fill="#79c0ff">→</text>
+    <text x="81" y="589" fill="#c9d1d9">Run git grep for the filename before removing it.</text>
+    <line x1="30" x2="1090" y1="625" y2="625" stroke="#30363d"/>
+    <text x="30" y="663" fill="#f0f6fc" font-weight="700">Summary</text>
+    <text x="140" y="663" fill="#c9d1d9">3 high-confidence findings  •  completed in 192 ms</text>
+    <text x="30" y="697" fill="#8b949e">repo-prune never deletes anything automatically.</text>
+  </g>
+</svg>

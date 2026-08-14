@@ -1,134 +1,217 @@
 # repo-prune
 
-Find what your repository no longer needs.
+**Stop guessing what's dead in your repo.**
+
+Evidence-first repository cleanup for teams that delete carefully.
 
 ```bash
-npx repo-prune scan
+npx repo-prune scan --since main
 ```
+
+repo-prune tells you what a feature-removal branch may have left behind—dead files, newly unused
+dependencies, stale scripts, and orphaned environment variables—and shows both the evidence and the
+caveats for every finding.
+
+![repo-prune branch-aware terminal demo](docs/demo.svg)
+
+> repo-prune is deterministic, local, read-only, and never deletes anything automatically.
+
+## The feature-removal check
+
+You remove `src/payment/legacy-handler.ts`. The code review looks clean, but the branch also leaves
+behind:
+
+- `src/payment/legacy-types.ts`, whose only importer was removed;
+- `moment`, which no remaining live file imports;
+- `PAYMENT_LEGACY_TIMEOUT` in `.env.example`;
+- `migrate-payment-v1` in `package.json`.
+
+Grep can check each surface separately. repo-prune connects the branch change to what became
+orphaned:
 
 ```text
-$ repo-prune scan
+HIGH   src/payment/legacy-types.ts
+       Potential dead file
 
-Potential dead file
+Looks removable because
+  ✓ no source file imports it
+  ✓ not a package or configured entrypoint
+  ✓ tests and documentation do not reference it
 
-src/legacy/payment_v1.ts
+Branch evidence
+  ↳ the only previous importer, src/payment/legacy-handler.ts,
+    was deleted in this branch
 
-Confidence: HIGH
+Possible caveat
+  ! repository uses non-literal import() (src/plugins/loader.ts:14)
 
-Evidence
-  - no incoming static imports
-  - not a package or configured entrypoint
-  - not referenced by tests or documentation
-  - not referenced by known configuration files
-
-Potentially unused dependency
-
-moment
-
-Confidence: MEDIUM
-
-Evidence
-  - declared in package.json
-  - zero static imports or requires detected
+Suggested review
+  → Review src/plugins/loader.ts:14, then run git grep for the filename.
 ```
 
-**repo-prune never deletes anything automatically.** Every result includes its evidence, the
-reason it may be wrong, and a recommended review step.
+Run this after deleting or rewriting a feature, before merging a cleanup PR, or when a migration may
+have left repository artifacts behind.
 
-## Why
+## What makes it different
 
-Repositories accumulate more than dead source files. Dependencies, environment templates,
-package scripts, Docker stages, copied artifacts, and forgotten TODOs all drift at different
-speeds. Most existing tools inspect one of those surfaces.
-
-repo-prune treats the repository as a system and asks:
-
-> What looks stale across my entire repository?
-
-The core engine is deterministic, local, and does not use AI or send source code anywhere.
-
-## Installation
-
-Run it without installing:
+### Branch-aware evidence
 
 ```bash
-npx repo-prune scan
+repo-prune scan --since main
+repo-prune scan --since origin/main
+repo-prune scan --since abc123f
 ```
 
-Or install it in a project:
+repo-prune inspects the merge-base diff and the previous content of changed or deleted files. It
+filters out unrelated pre-existing findings and can explain that a file's previous importer, a
+dependency import, or an environment-variable read disappeared in this branch.
 
-```bash
-npm install --save-dev repo-prune
-npx repo-prune scan
-```
+### Cross-surface correlation
 
-repo-prune requires Node.js 20 or newer.
+A shared reference index connects files, packages, scripts, and environment reads. If a dependency
+is only imported by files that also look dead, the result says so explicitly instead of emitting two
+unrelated warnings.
+
+### Honest uncertainty
+
+Findings contain three separate evidence groups:
+
+- `supporting`: facts that make the artifact look unused;
+- `contradicting`: repository evidence arguing against the conclusion;
+- `uncertain`: runtime behavior the scanner found but cannot resolve statically.
+
+Confidence is an explainable tier, not a fictional percentage. A detected `import(variable)`, glob
+loader, framework decorator, plugin-shaped package, or external deployment boundary changes the
+finding's caveats and can lower its confidence.
+
+## Why not just use Knip?
+
+[Knip](https://knip.dev/explanations/how-knip-works) is excellent. It has a mature JavaScript and
+TypeScript graph, broad framework tooling, unused-export analysis, and optional fixes. Use Knip when
+those are your main requirements.
+
+repo-prune has a narrower cleanup-review goal:
+
+| Capability                                                    | Knip |     repo-prune      |
+| ------------------------------------------------------------- | :--: | :-----------------: |
+| JS/TS unused files and dependencies                           |  ✅  |         ✅          |
+| Unused exports and deep JS/TS framework coverage              |  ✅  |          —          |
+| Python files and dependencies                                 |  —   |         ✅          |
+| `.env` documented/used drift                                  |  —   |         ✅          |
+| Docker stage reachability                                     |  —   |         ✅          |
+| Branch-caused findings with `--since`                         |  —   |         ✅          |
+| Per-finding supporting, contradicting, and uncertain evidence |  —   |         ✅          |
+| Automatic fixes                                               |  ✅  | intentionally never |
+
+If Knip already answers your questions, keep using it. If the question is “what did this cleanup PR
+orphan across code, dependencies, scripts, and config—and what could make each conclusion wrong?”,
+try repo-prune. Knip's current documented issue types are available in its
+[official reference](https://knip.dev/reference/issue-types).
 
 ## Quick start
 
+Requires Node.js 20 or newer.
+
+The npm name is ready for publication but `0.2.0` is not published yet. Until the first registry
+release, install directly from GitHub:
+
 ```bash
-# Scan the current repository
-repo-prune
-repo-prune scan
-
-# Scan another directory
-repo-prune scan ./path/to/repository
-
-# Machine-readable output
-repo-prune scan --json
-repo-prune scan --format json
-
-# Focus a review
-repo-prune scan --confidence high
-repo-prune scan --category dependencies
-
-# Make CI fail on high-confidence findings
-repo-prune scan --fail-on high
+npm install --save-dev github:XUanhoa04/repo-prune
+npx repo-prune scan --since main
 ```
 
-To see every analyzer immediately after cloning this repository:
+After publication, the canonical zero-install command is:
+
+```bash
+# Zero-install scan
+npx repo-prune scan
+
+# The memorable workflow: inspect what this branch may have orphaned
+npx repo-prune scan --since main
+
+# Add it to a repository
+npm install --save-dev repo-prune
+npx repo-prune scan --format json
+```
+
+After cloning repo-prune itself:
 
 ```bash
 npm install
 npm run build
-npm run demo
+npm run demo:since
 ```
 
-## What repo-prune detects
+`npm run demo:since` creates a temporary Git repository, removes a feature, and runs the real CLI
+against the resulting branch. `npm run demo` runs every detector against the static demo repository.
 
-| Category             | Signals used                                                         | Default confidence       |
-| -------------------- | -------------------------------------------------------------------- | ------------------------ |
-| Potential dead files | Import graph, entrypoints, tests/docs/config references, conventions | High or Medium           |
-| Unused dependencies  | Node and Python declarations, imports, scripts, config               | Medium                   |
-| Configuration drift  | `.env.example` declarations, code reads, JSON/YAML config keys       | High or Medium           |
-| Dead npm scripts     | Script-to-script calls, docs/CI references, lifecycle names          | Medium                   |
-| Docker stages        | `FROM`, `COPY --from`, final stage, repository `--target` uses       | High                     |
-| Duplicate artifacts  | SHA-256 content identity and suspicious backup-style names           | High or Low, review-only |
-| Stale TODOs          | `TODO`, `FIXME`, `HACK`, `XXX` plus Git blame age                    | High                     |
+## What it detects
 
-JavaScript and TypeScript imports are parsed with the TypeScript Compiler API. Python uses a
-lightweight, dependency-free import parser that handles common absolute, relative, package, and
-`src/`-layout imports. This keeps startup fast and avoids requiring a Python installation.
+Core cleanup surfaces:
 
-## Confidence levels
+- potential dead JavaScript, TypeScript, and Python files;
+- unused Node and Python dependencies;
+- dependencies used only by potentially dead files;
+- stale npm scripts;
+- environment variables documented but not read;
+- environment variables read but missing from `.env.example`.
 
-- **HIGH** — several strong static signals agree and no supported safety exclusion matched.
-- **MEDIUM** — the evidence is useful, but runtime loading, plugins, or external invocation are
-  plausible.
-- **LOW** — a weak signal worth reviewing, never a deletion claim.
+Additional review signals:
 
-Confidence is not severity and never means “safe to delete.” Prefer false negatives over a risky
-false positive.
+- unreachable named Docker stages;
+- exact-content duplicates and backup-style filenames, always marked for review.
+
+repo-prune intentionally does not scan old TODOs, unused exports, or general code style. It is a
+repository cleanup advisor, not a task tracker, formatter, compiler, or AI reviewer.
+
+## Confidence model
+
+The tiers come from visible evidence counts and types:
+
+- **HIGH**: at least three supporting signals, no contradiction, and at most one uncertainty.
+- **MEDIUM**: useful supporting evidence plus a contradiction or multiple uncertainties.
+- **LOW**: only one supporting signal, or several facts argue against the finding.
+
+Example: an unreferenced file normally has five supporting signals. If the repository contains a
+non-literal runtime import, repo-prune records the exact loader location and adds a second runtime
+resolution uncertainty, lowering the file to `MEDIUM`.
+
+No confidence level means “safe to delete.”
+
+## CLI
+
+```text
+repo-prune [scan] [path]
+
+--since <git-ref>         Only show findings connected to branch changes
+--json                    Alias for --format json
+--format text|json        Human or machine-readable output
+--confidence <level>      Show exactly high, medium, or low findings
+--category <category>     files, dependencies, config, scripts, docker, duplicates
+--fail-on <level>         Exit 1 for findings at or above the selected tier
+```
+
+Other commands:
+
+```bash
+repo-prune init            # Create .repo-prune.yml
+repo-prune --help
+repo-prune --version
+```
+
+Exit codes:
+
+- `0`: scan completed and no policy threshold was violated;
+- `1`: `--fail-on` policy was violated;
+- `2`: invalid configuration, Git scope, or execution failure.
 
 ## Configuration
 
-Create a starter file:
+Zero configuration is the default. Create an explicit baseline when needed:
 
 ```bash
 repo-prune init
 ```
-
-repo-prune reads `.repo-prune.yml` or `.repo-prune.yaml` from the scanned root:
 
 ```yaml
 version: 1
@@ -139,11 +222,8 @@ ignore:
     - fixtures/**
     - generated/**
     - vendor/**
-    - dist/**
-    - build/**
   dependencies:
     - webpack
-    - typescript
 
 entrypoints:
   - src/main.py
@@ -157,122 +237,141 @@ frameworks:
   auto_detect: true
 
 thresholds:
-  stale_todo_days: 180
   max_file_size_bytes: 5242880
 ```
 
-The default ignored directories are `.git`, `node_modules`, `.venv`, `venv`, `dist`, `build`,
-`coverage`, `.next`, `.cache`, `.pytest_cache`, `__pycache__`, `vendor`, and `target`. Repository
-`.gitignore` rules are also respected. Files larger than 5 MB and detected binary files are skipped.
-
-Use [`.repo-prune.example.yml`](.repo-prune.example.yml) as a documented baseline. The Python
-distribution-to-import mapping is exported as `PYTHON_PACKAGE_IMPORT_MAP` in
-`src/analyzers/dependencies.ts` and is intentionally easy to extend.
-
-## CLI reference
-
-```text
-repo-prune [scan] [path]
-
---json                    Alias for --format json
---format text|json        Reporter format
---confidence high|medium|low
-                          Show exactly one confidence level
---category <category>     files, dependencies, config, scripts, docker,
-                          duplicates, or todos
---fail-on high|medium|low Exit 1 if a finding at or above the level exists
---stale-days <days>       Override the stale TODO threshold
-```
-
-Exit codes:
-
-- `0`: scan succeeded and no policy threshold was violated.
-- `1`: `--fail-on` policy was violated.
-- `2`: invalid configuration or execution failure.
+See [`.repo-prune.example.yml`](.repo-prune.example.yml). repo-prune also respects `.gitignore` and
+skips binary files, symlinks, known output directories, and text files larger than 5 MB by default.
 
 ## CI
 
+Branch-aware checks are most useful after a team has reviewed the existing repository baseline:
+
 ```yaml
-- name: Find repository waste
-  run: npx repo-prune scan --fail-on high
+- name: Check what this PR may have orphaned
+  run: npx repo-prune scan --since ${{ github.event.pull_request.base.sha }} --fail-on high
 ```
 
-Start with reporting only, establish an ignore baseline, and enable `--fail-on` once findings are
-reviewed. JSON output can be archived as a CI artifact:
+JSON output keeps evidence structured for PR comments or artifacts:
 
 ```bash
-npx repo-prune scan --format json > repo-prune-report.json
+npx repo-prune scan --since origin/main --format json > repo-prune-report.json
 ```
 
-## Supported languages
+```json
+{
+  "confidence": "medium",
+  "supporting": [{ "type": "import-graph", "message": "no source file imports it" }],
+  "contradicting": [],
+  "uncertain": [
+    {
+      "type": "dynamic-import",
+      "message": "repository uses non-literal import()",
+      "path": "src/loader.ts",
+      "line": 14
+    }
+  ],
+  "causedBy": [
+    {
+      "type": "branch-cause",
+      "message": "the only previous importer was deleted in this branch"
+    }
+  ]
+}
+```
 
-- JavaScript, JSX, TypeScript, and TSX: static imports, exports, `require`, literal dynamic imports,
-  environment reads, package dependencies, and entrypoints.
-- Python: common import forms, relative/package resolution, environment reads, PEP 621/Poetry and
-  requirements dependencies, and `pyproject.toml` CLI entrypoints.
-- Generic repositories: environment templates, JSON/YAML config, Dockerfiles, duplicate files,
-  suspicious artifact names, TODO age, docs, Git ignore rules, and binary/size guards.
+## Safety rules
 
-## Architecture
+- No delete or fix command.
+- No source upload, telemetry, cloud backend, or AI dependency.
+- Known entrypoints, package exports, Python CLI entrypoints, tests, migrations, fixtures, generated
+  files, and Next.js conventions are protected.
+- Configured plugin/dynamic directories are suppressed.
+- Non-literal imports, glob loaders, and supported framework signals produce concrete caveats.
+- Exact duplicates are evidence of identity, never evidence that one copy is unused.
+
+## Supported analysis
+
+JavaScript and TypeScript use the TypeScript Compiler API for imports, exports-from, `require()`,
+literal dynamic imports, runtime-loader signals, and environment reads. Python uses a lightweight
+local parser for common imports, relative/package resolution, environment reads, PEP 621/Poetry,
+requirements files, and `pyproject.toml` CLI entrypoints.
+
+The scanner precomputes one shared reference index:
 
 ```text
-src/
-  cli.ts                 command parsing and exit policy
-  core/                  config, filesystem, repository context, scanner
-  analyzers/             one evidence-producing module per category
-  languages/             JS/TS and Python reference extraction/resolution
-  models/                shared Finding and Evidence contracts
-  reporters/             terminal and JSON presentation only
+source files ──imports──▶ source files
+     │                       │
+     ├──imports──▶ packages  ├──cross-surface correlation
+     ├──reads────▶ env vars  └──branch-causal filtering
+     └──signals──▶ runtime/framework uncertainty
 ```
 
-Every analyzer emits the same `Finding` model. Reporters only render findings; they do not contain
-scan logic. Analyzers run independently against one read-only repository context.
+Analyzers still emit the same `Finding` interface and remain independently testable. A post-analysis
+correlation pass creates cross-surface findings; an optional Git scope pass adds causal evidence and
+hides unrelated repository debt.
+
+## Performance
+
+File reads use bounded concurrency, binary/size guards, and one shared parse/index pass. The included
+synthetic precision fixture currently reports:
+
+```text
+Files: 1001
+Known dead files: 100
+Detected dead files: 100
+Fixture false positives: 0
+Engine scan time: ~1.0s
+```
+
+Run it locally with `npm run benchmark`. These are synthetic fixture results, not a claim of
+production accuracy.
 
 ## Known limitations
 
-- Non-literal dynamic imports, reflection, dependency injection, plugin discovery, and external
-  automation cannot always be resolved.
-- TypeScript path aliases and monorepo package boundaries receive conservative heuristic treatment;
-  they are not a replacement for a full compiler build.
-- The Python parser intentionally does not implement the complete Python grammar. Multiline and
-  computed imports can be missed.
-- Dependency packages may only expose CLIs, framework plugins, loaders, or import names absent from
-  the built-in mapping.
-- Docker stages may be selected by build commands outside the repository.
-- Git-untracked lines have no blame age and are not reported as stale TODOs.
-- Duplicate content is evidence for review, never evidence that either copy is dead.
+- `--since` analyzes committed changes between the merge base and `HEAD`; uncommitted working-tree
+  edits are not causal inputs.
+- TypeScript path aliases, package workspaces, and framework conventions do not yet match Knip's
+  mature JS/TS coverage.
+- Computed imports, reflection, dependency injection, and external deployment/CI behavior cannot be
+  proven statically.
+- The Python parser intentionally does not implement the complete grammar or multiline import forms.
+- Dependency packages that expose only CLIs or plugins may require an ignore rule.
+- Source content is retained during a scan; bounded reads prevent descriptor spikes, but very large
+  monorepos still need more profiling and incremental indexing.
 
-## Roadmap
-
-- [x] JS/TS unused files and import graph
-- [x] Node and Python dependency checks
-- [x] Environment and configuration drift
-- [x] npm scripts, Docker stages, duplicates, and stale TODOs
-- [ ] Go, Java, and Rust support
-- [ ] Changed-file and Git-range scanning
-- [ ] Workspace-aware dependency graphs
-- [ ] Dependency graph visualization
-- [ ] VS Code extension and GitHub App
-- [ ] Explicit, interactive cleanup workflow
-- [ ] Optional AI-assisted review for ambiguous findings
-
-The deterministic, local engine will remain the default.
-
-## Contributing
-
-Issues and pull requests are welcome. Keep analyzers evidence-first, deterministic, and
-non-destructive. Before opening a pull request, run:
+## Development
 
 ```bash
+npm install
 npm run lint
 npm run typecheck
 npm test
 npm run build
-npm run demo
+npm run demo:since
+npm run prune:self
+npm run benchmark
 ```
 
-When adding a heuristic, include a positive test, a safety-exclusion test, evidence text, and a
-known-limitation note where appropriate.
+Regression fixtures cover CommonJS resolution, dynamic-import ambiguity, Next.js conventions,
+cross-surface correlation, and Git causal analysis. See [CONTRIBUTING.md](CONTRIBUTING.md) before
+adding a heuristic.
+
+## Focused roadmap
+
+- [x] Shared file/package/environment reference index
+- [x] Branch-caused findings with `--since`
+- [x] Computed supporting, contradicting, and uncertain evidence
+- [x] File-to-dependency cross-surface correlation
+- [x] False-positive regression fixtures and synthetic benchmark
+- [ ] Workspace-aware and `tsconfig` path resolution
+- [ ] Reviewed-baseline workflow for established repositories
+- [ ] `explain <path>` using the existing bidirectional reference index
+- [ ] SARIF output after branch-aware CI usage proves demand
+- [ ] Incremental indexing for very large monorepos
+
+No automatic deletion, unused-export competition, AI analysis, dashboard, editor extension, or hosted
+service is planned for the core CLI.
 
 ## License
 

@@ -66,7 +66,7 @@ const program = new Command();
 program
   .exitOverride()
   .name('repo-prune')
-  .description('Find what your repository no longer needs.')
+  .description('Evidence-first repository cleanup with branch-aware findings.')
   .version(VERSION);
 
 const addScanOptions = (command: Command): Command =>

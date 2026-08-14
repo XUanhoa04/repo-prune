@@ -1,7 +1,7 @@
 {
   "name": "repo-prune",
   "version": "0.2.0",
-  "description": "Find what your repository no longer needs.",
+  "description": "Evidence-first repository cleanup with branch-aware findings.",
   "type": "module",
   "bin": {
     "repo-prune": "dist/cli.js"
@@ -10,12 +10,13 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
+    "docs",
     "README.md",
     "LICENSE",
     ".repo-prune.example.yml"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "lint": "eslint . && prettier --check .",
@@ -24,6 +25,7 @@
     "demo:since": "node scripts/demo-since.mjs",
     "prune:self": "node dist/cli.js scan . --category files --confidence high",
     "benchmark": "node scripts/benchmark.mjs",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "engines": {
@@ -31,6 +33,9 @@
   },
   "keywords": [
     "dead-code",
+    "code-cleanup",
+    "developer-tools",
+    "git-diff",
     "repository",
     "static-analysis",
     "unused-dependencies",
