@@ -36,4 +36,25 @@ describe('Python support', () => {
       'beautifulsoup4',
     ]);
   });
+
+  it('exempts common Python CLI dev packages and resolves pyjwt/dotenv imports', async () => {
+    const root = await createFixture({
+      'requirements.txt': [
+        'pytest==8.0',
+        'pre-commit==3.7',
+        'ruff==0.4',
+        'pyjwt==2.8',
+        'python-dotenv==1.0',
+      ].join('\n'),
+      'main.py': [
+        'import jwt',
+        'from dotenv import load_dotenv',
+        'from os import environ, getenv',
+        'API_KEY = getenv("SECRET_KEY")',
+        'DB_HOST = environ.get("DATABASE_HOST")',
+      ].join('\n'),
+    });
+    const result = await scanRepository(root, [dependenciesAnalyzer]);
+    expect(result.findings).toHaveLength(0);
+  });
 });

@@ -40,9 +40,9 @@ export function analyzePythonFile(file: SourceFile): PythonAnalysis {
   const environmentReferences: PythonEnvironmentReference[] = [];
   const dynamicImportLines: number[] = [];
   const environmentPatterns = [
-    /\bos\.getenv\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]/g,
-    /\bos\.environ\s*\[\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]\s*\]/g,
-    /\bos\.environ\.get\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]/g,
+    /\b(?:os\.)?getenv\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]/g,
+    /\b(?:os\.)?environ\s*\[\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]\s*\]/g,
+    /\b(?:os\.)?environ\.(?:get|setdefault)\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]/g,
   ];
   for (const [index, rawLine] of file.content.split(/\r?\n/).entries()) {
     const line = rawLine.replace(/\s+#.*$/, '');

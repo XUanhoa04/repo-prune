@@ -15,14 +15,23 @@ const EXECUTABLE_ALIASES: Record<string, string[]> = {
 };
 
 const PYTHON_CLI_PACKAGES = new Set([
+  'alembic',
+  'autopep8',
+  'bandit',
   'black',
+  'celery',
+  'coverage',
   'flake8',
   'gunicorn',
+  'isort',
   'mypy',
   'pip-tools',
+  'pre-commit',
+  'pylint',
   'pytest',
   'ruff',
   'tox',
+  'twine',
   'uvicorn',
 ]);
 
