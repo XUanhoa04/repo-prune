@@ -19,4 +19,26 @@ describe('Docker analyzer', () => {
     const result = await scanRepository(root, [dockerAnalyzer]);
     expect(result.findings.map((finding) => finding.metadata?.stage)).toEqual(['test-base']);
   });
+
+  it('scans Dockerfile.dev and Containerfile variants', async () => {
+    const root = await createFixture({
+      'Dockerfile.dev': [
+        'FROM node:22 AS dev-base',
+        'FROM dev-base AS unused-dev',
+        'RUN npm test',
+        'FROM dev-base AS final-dev',
+      ].join('\n'),
+      Containerfile: [
+        'FROM alpine:3.20 AS builder',
+        'FROM builder AS unreferenced-step',
+        'FROM alpine:3.20 AS runtime',
+        'COPY --from=builder /app /app',
+      ].join('\n'),
+    });
+    const result = await scanRepository(root, [dockerAnalyzer]);
+    expect(result.findings.map((finding) => finding.metadata?.stage).sort()).toEqual([
+      'unreferenced-step',
+      'unused-dev',
+    ]);
+  });
 });

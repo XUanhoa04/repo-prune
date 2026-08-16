@@ -10,7 +10,14 @@ interface DockerStage {
 
 function isDockerfile(file: SourceFile): boolean {
   const basename = path.posix.basename(file.relativePath);
-  return basename === 'Dockerfile' || basename.endsWith('.Dockerfile');
+  return (
+    basename === 'Dockerfile' ||
+    basename.startsWith('Dockerfile.') ||
+    basename.endsWith('.Dockerfile') ||
+    basename === 'Containerfile' ||
+    basename.startsWith('Containerfile.') ||
+    basename.endsWith('.Containerfile')
+  );
 }
 
 export const dockerAnalyzer: Analyzer = {
