@@ -14,4 +14,19 @@ describe('npm script analyzer', () => {
     const result = await scanRepository(root, [npmScriptsAnalyzer]);
     expect(result.findings.map((finding) => finding.metadata?.script)).toEqual(['legacy-test']);
   });
+
+  it('exempts standard scripts like typecheck, preview, clean and ci', async () => {
+    const root = await createFixture({
+      'package.json': JSON.stringify({
+        scripts: {
+          typecheck: 'tsc --noEmit',
+          preview: 'vite preview',
+          clean: 'rimraf dist',
+          ci: 'npm run test',
+        },
+      }),
+    });
+    const result = await scanRepository(root, [npmScriptsAnalyzer]);
+    expect(result.findings).toHaveLength(0);
+  });
 });

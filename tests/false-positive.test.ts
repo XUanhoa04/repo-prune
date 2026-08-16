@@ -28,4 +28,10 @@ describe('false-positive regression fixtures', () => {
     const result = await scanRepository(fixture('commonjs-require'), [deadFilesAnalyzer]);
     expect(result.findings.map((finding) => finding.path)).toEqual(['legacy.js']);
   });
+
+  it('protects config files, test setups, and extended Next.js App Router files', async () => {
+    const root = path.resolve('tests', 'fixtures', 'nextjs-app');
+    const result = await scanRepository(root, [deadFilesAnalyzer]);
+    expect(result.findings).toHaveLength(0);
+  });
 });

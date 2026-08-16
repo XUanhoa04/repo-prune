@@ -24,6 +24,18 @@ const STANDARD_SCRIPTS = new Set([
   'postversion',
   'restart',
   'stop',
+  'check',
+  'typecheck',
+  'type-check',
+  'preview',
+  'clean',
+  'benchmark',
+  'bench',
+  'docs',
+  'codegen',
+  'generate',
+  'release',
+  'ci',
 ]);
 
 function scriptIsCalled(scriptName: string, commands: string[]): boolean {
