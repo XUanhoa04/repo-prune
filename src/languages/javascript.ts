@@ -69,6 +69,15 @@ export function analyzeJavaScriptFile(file: SourceFile): JavaScriptAnalysis {
     node.expression.text === 'process' &&
     node.name.text === 'env';
 
+  const isImportMetaEnv = (node: ts.Expression): boolean =>
+    ts.isPropertyAccessExpression(node) &&
+    ts.isMetaProperty(node.expression) &&
+    node.expression.keywordToken === ts.SyntaxKind.ImportKeyword &&
+    node.expression.name.text === 'meta' &&
+    node.name.text === 'env';
+
+  const isEnvObject = (node: ts.Expression): boolean => isProcessEnv(node) || isImportMetaEnv(node);
+
   const addEnvironment = (key: string, node: ts.Node): void => {
     const line = lineOf(node);
     if (
@@ -104,9 +113,9 @@ export function analyzeJavaScriptFile(file: SourceFile): JavaScriptAnalysis {
         globPatterns.push({ line: lineOf(node), detail: expressionText });
       }
     }
-    if (ts.isPropertyAccessExpression(node) && isProcessEnv(node.expression)) {
+    if (ts.isPropertyAccessExpression(node) && isEnvObject(node.expression)) {
       addEnvironment(node.name.text, node);
-    } else if (ts.isElementAccessExpression(node) && isProcessEnv(node.expression)) {
+    } else if (ts.isElementAccessExpression(node) && isEnvObject(node.expression)) {
       const argument = node.argumentExpression;
       if (argument && ts.isStringLiteralLike(argument)) addEnvironment(argument.text, node);
     }

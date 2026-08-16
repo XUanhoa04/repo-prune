@@ -78,7 +78,9 @@ function dynamicConfigurationEvidence(context: RepositoryContext) {
   return context.sourceFiles
     .flatMap((file) =>
       file.content.split(/\r?\n/).flatMap((line, index) =>
-        /process\.env\s*\[\s*[^'"\s]|os\.(?:getenv|environ\.get)\(\s*[^'"]/.test(line)
+        /process\.env\s*\[\s*[^'"\s]|import\.meta\.env\s*\[\s*[^'"\s]|os\.(?:getenv|environ\.get)\(\s*[^'"]/.test(
+          line,
+        )
           ? [
               {
                 type: 'dynamic-config',

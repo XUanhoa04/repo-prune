@@ -21,4 +21,15 @@ describe('environment analyzer', () => {
     );
     expect(result.findings.map((finding) => finding.metadata?.key)).not.toContain('DOCUMENTED');
   });
+
+  it('recognizes import.meta.env property and element access', async () => {
+    const root = await createFixture({
+      '.env.example': 'VITE_API_URL=https://api.example\nVITE_APP_NAME=MyApp\n',
+      'src/main.ts':
+        'const apiUrl = import.meta.env.VITE_API_URL;\nconst appName = import.meta.env["VITE_APP_NAME"];\n',
+    });
+    const result = await scanRepository(root, [envAnalyzer]);
+    expect(result.findings.map((finding) => finding.metadata?.key)).not.toContain('VITE_API_URL');
+    expect(result.findings.map((finding) => finding.metadata?.key)).not.toContain('VITE_APP_NAME');
+  });
 });
