@@ -17,4 +17,16 @@ describe('filesystem walker', () => {
     const result = await walkRepository(root, matcher, 1024);
     expect(result.files.map((file) => file.relativePath)).toEqual(['src/main.ts']);
   });
+
+  it('skips extended binary file types like webp and wasm', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'repo-prune-'));
+    await mkdir(path.join(root, 'assets'));
+    await writeFile(path.join(root, 'assets', 'hero.webp'), 'fake-binary');
+    await writeFile(path.join(root, 'assets', 'module.wasm'), 'fake-binary');
+    await writeFile(path.join(root, 'assets', 'data.ts'), 'export const data = 1;');
+    const matcher = await createPathIgnore(root, []);
+    const result = await walkRepository(root, matcher, 1024);
+    expect(result.files.map((file) => file.relativePath)).toEqual(['assets/data.ts']);
+    expect(result.skippedFiles).toBe(2);
+  });
 });

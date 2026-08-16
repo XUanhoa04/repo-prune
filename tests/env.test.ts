@@ -32,4 +32,14 @@ describe('environment analyzer', () => {
     expect(result.findings.map((finding) => finding.metadata?.key)).not.toContain('VITE_API_URL');
     expect(result.findings.map((finding) => finding.metadata?.key)).not.toContain('VITE_APP_NAME');
   });
+
+  it('scans .env.dist and .env.defaults template conventions', async () => {
+    const root = await createFixture({
+      '.env.dist': 'SERVICE_PORT=8080\nUNUSED_FLAG=true\n',
+      'src/server.ts': 'const port = process.env.SERVICE_PORT;\n',
+    });
+    const result = await scanRepository(root, [envAnalyzer]);
+    expect(result.findings.map((finding) => finding.metadata?.key)).toContain('UNUSED_FLAG');
+    expect(result.findings.map((finding) => finding.metadata?.key)).not.toContain('SERVICE_PORT');
+  });
 });

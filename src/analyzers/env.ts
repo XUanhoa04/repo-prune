@@ -5,7 +5,14 @@ import { isJavaScriptFile } from '../languages/javascript.js';
 import type { Finding } from '../models/finding.js';
 import { assessConfidence } from '../core/confidence.js';
 
-const ENV_TEMPLATE_NAMES = new Set(['.env.example', '.env.template', '.env.sample']);
+const ENV_TEMPLATE_NAMES = new Set([
+  '.env.example',
+  '.env.template',
+  '.env.sample',
+  '.env.dist',
+  '.env.defaults',
+  '.env.local.example',
+]);
 
 interface Declaration {
   key: string;
